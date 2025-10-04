@@ -1,0 +1,29 @@
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
+#include <Servo.h>
+
+RF24 radio(9, 10);
+Servo servo1;
+Servo servo2;
+const byte address[6] = "00002"; // Sama kuin lähetin lähettimen osoite
+
+void setup() {
+  Serial.begin(9600);
+  servo1.attach(6);
+  servo2.attach(5);
+  radio.begin();
+  radio.openReadingPipe(0, address);
+  radio.setPALevel(RF24_PA_MIN);
+  radio.startListening();
+}
+
+void loop() {
+  if (radio.available()) {
+    int dataPacket[2];
+    radio.read(&dataPacket, sizeof(dataPacket));
+    servo1.write(dataPacket[0]);
+    servo2.write(dataPacket[1]);
+    Serial.print("Servo1: " + String(dataPacket[0]) + " Servo2: " + String(dataPacket[1]));
+  }
+}
