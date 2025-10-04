@@ -1,0 +1,39 @@
+#include "BluetoothSerial.h"
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
+
+BluetoothSerial SerialBT;
+RF24 radio(15, 5); // CE, CSN
+const byte address[6] = "00001";
+
+int servo1 = 90; // Oletusarvo
+int servo2 = 90;
+
+void setup() {
+  Serial.begin(115200);
+  SerialBT.begin("ESP32_Servo"); // Bluetooth-nimi
+  radio.begin();
+  radio.openWritingPipe(address);
+  radio.setPALevel(RF24_PA_MIN); // Teho, säädä jos tarvis
+  Serial.println("Bluetooth ready, pair with phone!");
+}
+
+void loop() {
+  if (SerialBT.available()) {
+    String data = SerialBT.readStringUntil('\n');
+    // Parsinta: Oletetaan formaatti "S1:120S2:45"
+    int idx1 = data.indexOf("S1:");
+    int idx2 = data.indexOf("S2:");
+    if (idx1 > 0 && idx2 > 0) {
+      servo1 = data.substring(idx1 + 3, idx2).toInt();
+      servo2 = data.substring(idx2 + 3).toInt();
+    }
+    Serial.print("Received: S1=" + String(servo1) + " S2=" + String(servo2));
+  }
+
+  // Lähetä NRF24:llä (lähetin-Arduinolle)
+  int dataPacket[2] = {servo1, servo2};
+  radio.write(&dataPacket, sizeof(dataPacket));
+  delay(50); // Vältä ylikuormitusta
+}
