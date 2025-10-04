@@ -1,0 +1,42 @@
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
+
+RF24 radio(9, 10); // CE, CSN
+const byte address[6] = "00001"; // Sama kuin ESP32
+
+int servo1 = 90;
+int servo2 = 90;
+int pot1 = A0;
+int pot2 = A1;
+
+void setup() {
+  Serial.begin(9600);
+  radio.begin();
+  radio.openReadingPipe(0, address);
+  radio.setPALevel(RF24_PA_MIN);
+  radio.startListening();
+}
+
+void loop() {
+  if (radio.available()) {
+    int dataPacket[2];
+    radio.read(&dataPacket, sizeof(dataPacket));
+    servo1 = dataPacket[0];
+    servo2 = dataPacket[1];
+  }
+
+  // Testaa potikoilla: Korvaa ESP32-arvot pot-arvoilla jos ei signaalia
+  int potVal1 = analogRead(pot1);
+  int potVal2 = analogRead(pot2);
+  servo1 = map(potVal1, 0, 1023, 0, 180);
+  servo2 = map(potVal2, 0, 1023, 0, 180);
+
+  // Lähetä eteenpäin NRF24:llä (toinen moduuli vastaanotin-Arduinolle)
+  RF24 radio2(7, 8); // Toinen NRF24 lähettimeksi, CE=7, CSN=8
+  radio2.begin();
+  radio2.openWritingPipe("00002"); // Eri osoite vastaanottimelle
+  int outPacket[2] = {servo1, servo2};
+  radio2.write(&outPacket, sizeof(outPacket));
+  delay(50);
+}
